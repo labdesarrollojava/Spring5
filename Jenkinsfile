@@ -1,130 +1,62 @@
-#!/bin/bash
-# Jenkinsfile para el proyecto Spring5
-# Despliegue automático en Tomcat después de compilar
-# Este archivo debe copiarse al repositorio Spring5
+// Jenkinsfile para la construcción y despliegue de Spring5 en Tomcat
 
 pipeline {
+    // Define el entorno donde se ejecutará el Pipeline (ej. en cualquier agente disponible)
     agent any
 
-    environment {
-        // Configuración de la aplicación
-        TOMCAT_CONTAINER = "tomcat"
-        APP_NAME = "testing-junit5-mockito"  // Nombre del artefacto en pom.xml
-        MAVEN_HOME = "/usr/share/maven"
+    // Define los parámetros si los necesitas (opcional)
+    parameters {
+        string(name: 'TOMCAT_APP_NAME', defaultValue: 'Spring5', description: 'Nombre de la aplicación en Tomcat (context path)')
     }
 
+    // Etapas del proceso
     stages {
         stage('Checkout') {
             steps {
-                echo "📥 Descargando código fuente..."
-                checkout scm
+                echo 'Obteniendo código del repositorio...'
+                // Por defecto, Jenkins obtiene el código configurado en la definición del Job.
+                // Si quieres ser explícito, puedes usar:
+                // git url: 'https://github.com/labdesarrollojava/Spring5.git', branch: 'main'
             }
         }
 
-        stage('Build') {
+        stage('Build WAR') {
             steps {
-                echo "🔨 Compilando con Maven..."
-                sh '''
-                    mvn --version
-                    mvn clean package -DskipTests
-                '''
-            }
-        }
-
-        stage('Test') {
-            steps {
-                echo "🧪 Ejecutando pruebas..."
-                sh '''
-                    mvn test
-                '''
-            }
-        }
-
-        stage('Verify WAR Generation') {
-            steps {
-                echo "📦 Verificando generación del WAR..."
-                sh '''
-                    if [ -f "target/testing-junit5-mockito.jar" ]; then
-                        echo "✓ JAR encontrado: target/testing-junit5-mockito.jar"
-                        ls -lh target/testing-junit5-mockito.jar
-                    elif [ -f "target/testing-junit5-mockito.war" ]; then
-                        echo "✓ WAR encontrado: target/testing-junit5-mockito.war"
-                        ls -lh target/testing-junit5-mockito.war
-                    else
-                        echo "⚠️  Buscando archivos en target/"
-                        ls -lh target/ | grep -E "\\.(jar|war)$" || echo "No se encontraron archivos"
-                    fi
-                '''
+                echo 'Compilando y empaquetando el proyecto con Maven...'
+                // Asume que tienes Maven configurado en Jenkins (en Manage Jenkins > Tools)
+                // Usamos 'sh' para ejecutar un comando de shell.
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Deploy to Tomcat') {
             steps {
-                echo "🚀 Desplegando a Tomcat..."
-                sh '''
-                    # Buscar el artefacto generado
-                    ARTIFACT=$(find target -maxdepth 1 -type f \\( -name "*.jar" -o -name "*.war" \\) ! -name "*sources*" ! -name "*javadoc*" | head -1)
-                    
-                    if [ -z "$ARTIFACT" ]; then
-                        echo "❌ Error: No se encontró WAR/JAR"
-                        ls -la target/
-                        exit 1
-                    fi
-                    
-                    ARTIFACT_NAME=$(basename "$ARTIFACT")
-                    echo "📤 Copiando $ARTIFACT_NAME a Tomcat..."
-                    
-                    docker cp "$ARTIFACT" "${TOMCAT_CONTAINER}:/usr/local/tomcat/webapps/${APP_NAME}.jar"
-                    
-                    echo "⏳ Esperando a que se despliegue..."
-                    for i in {1..30}; do
-                        # Para Spring Boot JAR (modo embedded)
-                        # Esperar acceso HTTP
-                        if curl -f http://localhost:8081/${APP_NAME}/ --silent > /dev/null 2>&1; then
-                            echo "✓ Aplicación disponible"
-                            exit 0
-                        fi
-                        echo "  Intento $i/30..."
-                        sleep 2
-                    done
-                    
-                    echo "⚠️  Tiempo de espera agotado, pero continuando..."
-                '''
-            }
-        }
-
-        stage('Health Check') {
-            steps {
-                echo "🏥 Verificando salud de la aplicación..."
-                sh '''
-                    echo "Esperando 5 segundos..."
-                    sleep 5
-                    
-                    echo "Probando acceso a la aplicación..."
-                    curl -v http://localhost:8081/${APP_NAME}/ 2>&1 | head -20 || true
-                '''
+                echo 'Iniciando el despliegue en Tomcat...'
+                // Esta es la acción que requiere el plugin "Deploy to Container Plugin"
+                deploy adapters: [tomcat8(
+                    // ID de las credenciales de Tomcat que configuraste en Jenkins
+                    credentialsId: '<TU_ID_CREDENCIALES_TOMCAT>',
+                    // URL base de tu servidor Tomcat (ej. http://localhost:8080)
+                    url: '<URL_TOMCAT>' 
+                )], 
+                // Ruta del archivo WAR generado por Maven (ej. /target/Spring5.war)
+                // Ajusta 'Spring5.war' al nombre exacto de tu artefacto
+                contextPath: "${params.TOMCAT_APP_NAME}",
+                war: 'target/**/*.war' 
             }
         }
     }
-
+    
+    // Acciones a realizar después de que el Pipeline ha terminado
     post {
+        always {
+            echo 'Pipeline finalizado. Verificando estado...'
+        }
         success {
-            echo "✅ Despliegue completado exitosamente"
-            echo "📍 Aplicación disponible en: http://localhost:8081/${APP_NAME}"
+            echo '✅ Despliegue exitoso.'
         }
         failure {
-            echo "❌ El despliegue falló"
-            sh '''
-                echo "Logs de Tomcat:"
-                docker logs tomcat | tail -30
-                
-                echo "Contenido de webapps:"
-                docker exec tomcat ls -la /usr/local/tomcat/webapps/
-            '''
-        }
-        always {
-            echo "🧹 Limpieza de workspace..."
-            cleanWs()
+            echo '❌ El Pipeline falló. Revisa los logs.'
         }
     }
 }
