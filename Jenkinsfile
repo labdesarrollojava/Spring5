@@ -35,9 +35,9 @@ pipeline {
                 // Esta es la acción que requiere el plugin "Deploy to Container Plugin"
                 deploy adapters: [tomcat8(
                     // ID de las credenciales de Tomcat que configuraste en Jenkins
-                    credentialsId: '<TU_ID_CREDENCIALES_TOMCAT>',
+                    credentialsId: 'tomcat',
                     // URL base de tu servidor Tomcat (ej. http://localhost:8080)
-                    url: '<URL_TOMCAT>' 
+                    url: 'http://localhost:8081' 
                 )], 
                 // Ruta del archivo WAR generado por Maven (ej. /target/Spring5.war)
                 // Ajusta 'Spring5.war' al nombre exacto de tu artefacto
