@@ -36,7 +36,7 @@ pipeline {
                     contextPath: "/${params.TOMCAT_APP_NAME}", 
                     
                     adapters: [
-                        tomcat8( 
+                        tomcat10( 
                             credentialsId: 'tomcat-auth',
                             url: 'http://tomcat:8080'  
                         )
