@@ -1,30 +1,23 @@
-// Jenkinsfile para la construcción y despliegue de Spring5 en Tomcat
-
 pipeline {
-    // Define el entorno donde se ejecutará el Pipeline (ej. en cualquier agente disponible)
     agent any
 
-    // Define los parámetros si los necesitas (opcional)
     parameters {
+        // Establecer un valor por defecto sin '/' para mayor flexibilidad
         string(name: 'TOMCAT_APP_NAME', defaultValue: 'Spring5', description: 'Nombre de la aplicación en Tomcat (context path)')
     }
 
-    // Etapas del proceso
     stages {
         stage('Checkout') {
             steps {
                 echo 'Obteniendo código del repositorio...'
-                // Por defecto, Jenkins obtiene el código configurado en la definición del Job.
-                // Si quieres ser explícito, puedes usar:
-                // git url: 'https://github.com/labdesarrollojava/Spring5.git', branch: 'main'
+                // Si la configuración del Job ya tiene Git, 'checkout scm' lo usa.
+                checkout scm 
             }
         }
 
         stage('Build WAR') {
             steps {
                 echo 'Compilando y empaquetando el proyecto con Maven...'
-                // Asume que tienes Maven configurado en Jenkins (en Manage Jenkins > Tools)
-                // Usamos 'sh' para ejecutar un comando de shell.
                 sh 'mvn clean package -DskipTests'
             }
         }
@@ -33,25 +26,26 @@ pipeline {
             steps {
                 echo 'Iniciando el despliegue en Tomcat...'
 
-                war: 'target/*.war' 
-                contextPath: "${params.TOMCAT_APP_NAME}"
-                // Esta es la acción que requiere el plugin "Deploy to Container Plugin"
-                adapters: [
-                    tomcat8( // O tomcat7/tomcat9/etc.
-                    // ID de las credenciales de Tomcat que configuraste
-                    credentialsId: 'tomcat',
-                    // URL de tu servidor Tomcat
-                    url: 'http://localhost:8081'  
-                    )
-                ]                // Ruta del archivo WAR generado por Maven (ej. /target/Spring5.war)
-                // Ajusta 'Spring5.war' al nombre exacto de tu artefacto
-                
-                
+                // 🚨 ¡LA CORRECCIÓN ESTÁ AQUÍ! 
+                // El paso 'deploy' debe agrupar todos sus argumentos.
+                deploy(
+                    // Usa 'target/*.war' para asegurar que se encuentra el artefacto compilado
+                    war: 'target/*.war', 
+                    
+                    // Define el Context Path. El plugin generalmente requiere el '/' inicial.
+                    contextPath: "/${params.TOMCAT_APP_NAME}", 
+                    
+                    adapters: [
+                        tomcat8( 
+                            credentialsId: 'tomcat',
+                            url: 'http://localhost:8081'  
+                        )
+                    ]
+                )
             }
         }
     }
     
-    // Acciones a realizar después de que el Pipeline ha terminado
     post {
         always {
             echo 'Pipeline finalizado. Verificando estado...'
