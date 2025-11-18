@@ -42,7 +42,7 @@ pipeline {
                 // Ruta del archivo WAR generado por Maven (ej. /target/Spring5.war)
                 // Ajusta 'Spring5.war' al nombre exacto de tu artefacto
                 contextPath: "${params.TOMCAT_APP_NAME}",
-                war: 'target/**/*.war' 
+                war: 'target/*.war' 
             }
         }
     }
