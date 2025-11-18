@@ -25,6 +25,7 @@ pipeline {
         stage('Deploy to Tomcat') {
             steps {
                 echo 'Iniciando el despliegue en Tomcat...'
+                echo "/${params.TOMCAT_APP_NAME}"
 
                 // 🚨 ¡LA CORRECCIÓN ESTÁ AQUÍ! 
                 // El paso 'deploy' debe agrupar todos sus argumentos.
