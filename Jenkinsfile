@@ -38,7 +38,7 @@ pipeline {
                     
                     adapters: [
                         tomcat10( 
-                            credentialsId: 'tomcat-auth',
+                            credentialsId: 'tomcat-admin',
                             url: 'http://tomcat:8080'  
                         )
                     ]
