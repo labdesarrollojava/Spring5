@@ -38,7 +38,7 @@ pipeline {
                     adapters: [
                         tomcat8( 
                             credentialsId: 'tomcat',
-                            url: 'http://tomcat:8081'  
+                            url: 'http://tomcat:8080'  
                         )
                     ]
                 )
